@@ -3,7 +3,7 @@ mod models;
 mod repositories;
 
 use actix_web::{web::Data, App, HttpServer};
-use controllers::analytics_controller::{get_all_analytics, create_analytics};
+use controllers::analytics_controller::{get_all_analytics, create_analytics, get_latest_analytics};
 use repositories::analytics_repository::AnalyticsRepo;
 
 #[actix_web::main]
@@ -15,6 +15,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(db_data.clone())
             .service(get_all_analytics)
             .service(create_analytics)
+            .service(get_latest_analytics)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

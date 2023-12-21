@@ -5,8 +5,9 @@ use dotenv::dotenv;
 
 use futures::stream::TryStreamExt;
 use mongodb::{
-    bson::{extjson::de::Error},
+    bson::{extjson::de::Error, doc},
     results::{DeleteResult, InsertOneResult, UpdateResult},
+    options::{FindOneOptions, FindOptions, UpdateOptions},
     Client, Collection,
 };
 use chrono::{Utc, SecondsFormat};
@@ -72,4 +73,17 @@ impl AnalyticsRepo {
 
         Ok(analytics)
     }
+    pub async fn get_latest_analytics(&self) -> Result<Option<Analytics>, Error> {
+        let options = FindOneOptions::builder()
+            .sort(doc! { "timestamp": -1 })
+            .build();
+        let analytics = self
+            .col
+            .find_one(None, options)
+            .await
+            .ok()
+            .expect("Error getting latest analytics");
+
+        Ok(analytics)
+}
 }
