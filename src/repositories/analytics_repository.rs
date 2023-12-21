@@ -5,15 +5,17 @@ use dotenv::dotenv;
 
 use futures::stream::TryStreamExt;
 use mongodb::{
-    bson::{extjson::de::Error, doc},
+    bson::{extjson::de::Error, doc, Document},
     results::{DeleteResult, InsertOneResult, UpdateResult},
     options::{FindOneOptions, FindOptions, UpdateOptions},
     Client, Collection,
 };
 use chrono::{Utc, SecondsFormat};
+use std::io::ErrorKind;
+use bson;
 
 
-use crate::models::analytics_model::{Analytics, CreateAnalyticsDto};
+use crate::models::analytics_model::{Analytics, CreateAnalyticsDto, CountEndpointsReponseDto, MyDocument};
 
 pub struct AnalyticsRepo {
     col: Collection<Analytics>,
@@ -85,5 +87,120 @@ impl AnalyticsRepo {
             .expect("Error getting latest analytics");
 
         Ok(analytics)
-}
+    }
+
+    pub async fn get_most_called_endpoint(&self) -> Result<Vec<String>, Error> {
+        let pipeline: Vec<Document> = vec![
+            doc!{
+                "$group": {
+                    "_id": "$endpoint",
+                    "count": { "$sum": 1 }
+                }
+            },
+            doc!{
+                "$sort": { "count": -1 }
+            },
+            doc!{
+                "$group": {
+                    "_id": null,
+                    "maxCount": { "$max": "$count" },
+                    "results": { "$push": { "endpoint": "$_id", "count": "$count" } }
+                }
+            },
+            doc!{
+                "$project": {
+                    "results": {
+                        "$filter": {
+                            "input": "$results",
+                            "as": "result",
+                            "cond": { "$eq": ["$$result.count", "$maxCount"] }
+                        }
+                    },
+                    "_id": 0
+                }
+            },
+            doc!{
+                "$limit": 1
+            },
+        ];
+        
+        let mut aggregation_cursor = self.col.aggregate(pipeline, None).await.ok().expect("Error aggregating analytics");
+        let mut endpoints: Vec<String> = Vec::new();
+
+        loop {
+            match aggregation_cursor.try_next().await {
+                Ok(Some(result)) => {
+                    if let Ok(results) = bson::from_document::<MyDocument>(result.clone()) {
+                        for result in results.results {
+                            endpoints.push(result.endpoint);
+                        }
+                    } else {
+                        println!("Error deserializing document into MyDocument");
+                    }
+                }
+                Ok(None) => {
+                    break;
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                    break;
+                }
+            }
+        }
+        
+
+        Ok(endpoints)
+    }
+    pub async fn get_number_of_call_for_each_endpoint(&self) -> Result<Vec<CountEndpointsReponseDto>, Error> {
+        let pipeline: Vec<Document> = vec![
+            doc!{
+                "$group": {
+                    "_id": "$endpoint",
+                    "count": { "$sum": 1 }
+                }
+            },
+            doc!{
+                "$sort": { "count": -1 }
+            },
+            doc!{
+                "$group": {
+                    "_id": null,
+                    "results": { "$push": { "endpoint": "$_id", "count": "$count" } }
+                }
+            },
+            doc!{
+                "$limit": 1
+            },
+        ];
+        
+        let mut aggregation_cursor = self.col.aggregate(pipeline, None).await.ok().expect("Error aggregating analytics");
+        let mut endpoints: Vec<CountEndpointsReponseDto> = Vec::new();
+
+        loop {
+            match aggregation_cursor.try_next().await {
+                Ok(Some(result)) => {
+                    if let Ok(results) = bson::from_document::<MyDocument>(result.clone()) {
+                        for result in results.results {
+                            endpoints.push(CountEndpointsReponseDto {
+                                endpoint: result.endpoint,
+                                count: result.count,
+                            });
+                        }
+                    } else {
+                        println!("Error deserializing document into MyDocument");
+                    }
+                }
+                Ok(None) => {
+                    break;
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                    break;
+                }
+            }
+        }
+        
+
+        Ok(endpoints)
+    }
 }

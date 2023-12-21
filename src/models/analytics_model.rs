@@ -13,3 +13,20 @@ pub struct Analytics {
 pub struct CreateAnalyticsDto {
     pub endpoint: String,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CountEndpointsReponseDto {
+    pub endpoint: String,
+    pub count: i32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResultItem {
+    pub endpoint: String,
+    pub count: i32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MyDocument {
+    pub results: Vec<ResultItem>,
+}
