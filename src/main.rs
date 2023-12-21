@@ -19,7 +19,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_most_called_endpoint)
             .service(get_number_of_call_for_each_endpoint)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 10000))?
     .run()
     .await
 }
