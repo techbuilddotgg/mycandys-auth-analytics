@@ -9,8 +9,10 @@ use mongodb::{
     results::{DeleteResult, InsertOneResult, UpdateResult},
     Client, Collection,
 };
+use chrono::{Utc, SecondsFormat};
 
-use crate::models::analytics_model::Analytics;
+
+use crate::models::analytics_model::{Analytics, CreateAnalyticsDto};
 
 pub struct AnalyticsRepo {
     col: Collection<Analytics>,
@@ -52,10 +54,14 @@ impl AnalyticsRepo {
         }
         Ok(analytics)
     }
-    pub async fn create_analytics(&self, new_analytics: Analytics) -> Result<InsertOneResult, Error> {
+    pub async fn create_analytics(&self, new_analytics: CreateAnalyticsDto) -> Result<InsertOneResult, Error> {
+        let current_time = Utc::now();
+        let iso_time = current_time.to_rfc3339_opts(SecondsFormat::Secs, true); // Pridobite ISO niz časa
+
         let new_doc = Analytics {
             id: None,
             endpoint: new_analytics.endpoint,
+            timestamp: iso_time,
         };
         let analytics = self
             .col

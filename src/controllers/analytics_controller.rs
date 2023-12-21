@@ -4,7 +4,7 @@ use actix_web::{
     web::{Data, Json},
     HttpResponse,
 };
-use crate::models::analytics_model::Analytics;
+use crate::models::analytics_model::{Analytics, CreateAnalyticsDto};
 
 
 #[get("/analytics")]
@@ -18,7 +18,7 @@ pub async fn get_all_analytics(db: Data<AnalyticsRepo>) -> HttpResponse {
 }
 
 #[post("/analytics")]
-pub async fn create_analytics(db: Data<AnalyticsRepo>, new_analytics: Json<Analytics>) -> HttpResponse {
+pub async fn create_analytics(db: Data<AnalyticsRepo>, new_analytics: Json<CreateAnalyticsDto>) -> HttpResponse {
     let analytics = db.create_analytics(new_analytics.into_inner()).await;
     
     match analytics {
