@@ -1,20 +1,22 @@
-use actix_web::{web, App, HttpServer, Responder};
+mod controllers;
+mod models;
+mod repositories;
 
-// Handler funkcija za korenno pot
-async fn index() -> impl Responder {
-    format!("Hello, world!")
-}
+use actix_web::{web::Data, App, HttpServer};
+use controllers::analytics_controller::{get_all_analytics, create_analytics};
+use repositories::analytics_repository::AnalyticsRepo;
 
-// Glavna funkcija, ki zažene strežnik
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Ustvarimo Http strežnik in nastavimo aplikacijo
-    HttpServer::new(|| {
+    let db = AnalyticsRepo::init().await;
+    let db_data = Data::new(db);
+    HttpServer::new(move || {
         App::new()
-            // Dodamo pot za korenno pot
-            .route("/", web::get().to(index))
+            .app_data(db_data.clone())
+            .service(get_all_analytics)
+            .service(create_analytics)
     })
-    .bind("127.0.0.1:8080")?  // Povežemo na naslov in vrata
+    .bind(("127.0.0.1", 8080))?
     .run()
-    .await // Poženemo strežnik
+    .await
 }
